@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HKS ESPORTS - PAINEL DE ESTATÍSTICAS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* =========================================
+           VARIÁVEIS E ESTILOS GERAIS
+           ========================================= */
+        :root {
+            --bg-base: #050505;
+            --bg-card: #111111;
+            --neon-orange: #ff6600;
+            --light-orange: #ff9933;
+            --text-white: #ffffff;
+            --text-gray: #aaaaaa;
+            --border-dark: #333333;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-base);
+            background-image: 
+                radial-gradient(circle at 15% 30%, rgba(255, 102, 0, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 85% 70%, rgba(255, 102, 0, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at center, #1a0a00 0%, #050505 100%);
+            color: var(--text-white);
+            font-family: 'Rajdhani', sans-serif;
+            text-transform: uppercase;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-base); }
+        ::-webkit-scrollbar-thumb { background: var(--border-dark); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--neon-orange); }
+
+        h1, h2, h3, h4 { margin: 0; }
+
+        /* =========================================
+           CABEÇALHO E RODAPÉ
+           ========================================= */
+        .header { 
+            display: flex; justify-content: space-between; align-items: flex-start; 
+            margin-bottom: 25px; 
+        }
+        .status-badge { color: #00ff00; font-weight: 700; display: flex; align-items: center; gap: 5px; text-shadow: 0 0 5px #00ff00; }
+        .status-dot { width: 8px; height: 8px; background: #00ff00; border-radius: 50%; box-shadow: 0 0 8px #00ff00; }
+        
+        .logo-right img { height: 70px; filter: drop-shadow(0 0 15px rgba(255,102,0,0.6)); }
+
+        .footer {
+            margin-top: auto; padding: 20px 0 10px 0; text-align: center;
+            font-size: 0.9rem; color: var(--text-gray); border-top: 1px solid var(--border-dark);
+        }
+        .footer a {
+            color: var(--neon-orange); text-decoration: none; font-weight: 700; transition: 0.3s;
+        }
+        .footer a:hover { color: var(--light-orange); text-shadow: 0 0 8px rgba(255,102,0,0.5); }
+
+        /* =========================================
+           NAVEGAÇÃO (ABAS)
+           ========================================= */
+        .nav-tabs {
+            display: flex; justify-content: center; gap: 15px; margin-bottom: 30px;
+        }
+        .tab-btn {
+            background: rgba(17, 17, 17, 0.8); border: 1px solid var(--border-dark);
+            color: var(--text-gray); padding: 10px 25px;
+            font-family: 'Rajdhani', sans-serif; font-size: 1.1rem; font-weight: 700;
+            cursor: pointer; border-radius: 4px; transition: all 0.3s ease; text-transform: uppercase;
+        }
+        .tab-btn:hover { border-color: var(--light-orange); color: var(--text-white); }
+        .tab-btn.active {
+            border-color: var(--neon-orange); color: var(--text-white);
+            box-shadow: 0 0 15px rgba(255, 102, 0, 0.4), inset 0 0 10px rgba(255, 102, 0, 0.2);
+        }
+        .tab-content { display: none; animation: fadeIn 0.4s; flex: 1; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* =========================================
+           DASHBOARD (VISUAL)
+           ========================================= */
+        .section-title { font-size: 1.2rem; margin-bottom: 15px; text-shadow: 0 0 5px rgba(255,255,255,0.3); }
+
+        .overview-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px; }
+        .stat-box {
+            background: var(--bg-card); border: 2px solid var(--neon-orange); border-radius: 8px;
+            padding: 15px 20px; display: flex; align-items: center; gap: 15px;
+            box-shadow: 0 0 15px rgba(255, 102, 0, 0.15), inset 0 0 10px rgba(255, 102, 0, 0.05);
+        }
+        .stat-icon { font-size: 2.5rem; filter: drop-shadow(0 0 5px var(--neon-orange)); }
+        .stat-info h4 { font-size: 0.9rem; color: var(--text-white); font-weight: 600; }
+        .stat-info .value { font-size: 2.2rem; font-weight: 700; color: var(--text-white); line-height: 1; margin-top: 5px; }
+        .stat-info .value span { font-size: 1.2rem; color: var(--text-gray); font-weight: 500; }
+
+        .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+        .chart-box {
+            background: var(--bg-card); border: 1px solid var(--neon-orange); border-radius: 8px; padding: 15px;
+            box-shadow: 0 0 15px rgba(255, 102, 0, 0.1);
+        }
+        .chart-title { text-align: center; font-size: 1.1rem; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;}
+        
+        .players-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
+        .player-card {
+            background: var(--bg-card); border: 2px solid var(--neon-orange); border-radius: 8px;
+            padding: 15px; position: relative; overflow: hidden;
+            box-shadow: 0 0 15px rgba(255, 102, 0, 0.2);
+            display: flex; gap: 15px; align-items: center;
+        }
+        .player-card::after {
+            content: ''; position: absolute; bottom: -20px; left: -10%; right: -10%; height: 60px;
+            background: linear-gradient(to top, rgba(255, 102, 0, 0.6) 0%, transparent 100%);
+            filter: blur(8px); z-index: 0; pointer-events: none;
+        }
+        .avatar-container { position: relative; z-index: 1; width: 70px; height: 80px; clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); background: #222; border: 2px solid var(--neon-orange); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .avatar-container img { width: 100%; height: 100%; object-fit: cover; }
+        
+        .player-stats { position: relative; z-index: 1; flex: 1; }
+        .player-name { font-size: 1.2rem; font-weight: 700; margin-bottom: 5px; border-bottom: 1px solid var(--border-dark); padding-bottom: 3px; }
+        .stat-row { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 2px; }
+        .stat-row .label { color: var(--text-gray); }
+        .stat-row .val { font-weight: 700; }
+
+        /* =========================================
+           PAINEL DE ADMINISTRAÇÃO (FORMULÁRIOS)
+           ========================================= */
+        .admin-section { max-width: 1000px; margin: 0 auto; }
+        .admin-panel {
+            background: var(--bg-card); border: 1px solid var(--border-dark); border-top: 3px solid var(--neon-orange);
+            border-radius: 8px; padding: 25px; margin-bottom: 25px; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+        }
+        .admin-panel h2 { color: var(--light-orange); margin-bottom: 20px; font-size: 1.3rem; }
+        
+        .form-row { display: flex; gap: 15px; margin-bottom: 15px; }
+        .form-group { flex: 1; }
+        .form-group label { display: block; font-size: 0.85rem; color: var(--text-gray); margin-bottom: 5px; }
+        .form-control {
+            width: 100%; padding: 10px; background: #000; border: 1px solid var(--border-dark);
+            color: var(--text-white); font-family: 'Rajdhani', sans-serif; border-radius: 4px; box-sizing: border-box; text-transform: uppercase;
+        }
+        .form-control:focus { outline: none; border-color: var(--neon-orange); }
+        
+        .btn-submit {
+            width: 100%; padding: 15px; background: var(--neon-orange); color: #fff;
+            border: none; border-radius: 4px; font-family: 'Rajdhani', sans-serif; font-size: 1.2rem;
+            font-weight: 700; cursor: pointer; transition: 0.3s; text-transform: uppercase; margin-top: 10px;
+        }
+        .btn-submit:hover { background: var(--light-orange); box-shadow: 0 0 15px rgba(255, 102, 0, 0.4); }
+
+        .select-highlight { border-color: var(--neon-orange); box-shadow: 0 0 10px rgba(255, 102, 0, 0.2); margin-bottom: 20px;}
+
+        /* Edição em Lote (Tabela) */
+        .batch-header { display: flex; gap: 10px; color: var(--text-gray); font-size: 0.8rem; margin-bottom: 5px; padding: 0 10px;}
+        .player-edit-row {
+            display: flex; gap: 10px; align-items: center; background: #1a1a1a; padding: 10px; 
+            border-radius: 5px; margin-bottom: 10px; border: 1px solid #333;
+        }
+        .player-edit-row input { background: #000; }
+        .btn-remove { background: #ff3333; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold;}
+        .btn-add-player { background: transparent; border: 2px dashed var(--border-dark); color: var(--text-white); width: 100%; padding: 10px; cursor: pointer; border-radius: 5px; font-family: 'Rajdhani'; font-size: 1.1rem; margin-bottom: 20px; transition: 0.3s;}
+        .btn-add-player:hover { border-color: var(--neon-orange); color: var(--neon-orange); }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="status-badge"><div class="status-dot"></div> FIREBASE: CONECTADO</div>
+        <div class="logo-right">
+            <img src="https://i.imgur.com/v8tTf3n.png" alt="HKS ESPORTS">
+        </div>
+    </div>
+
+    <div class="nav-tabs">
+        <button class="tab-btn active" onclick="switchTab('tab-dashboard')">📊 PAINEL</button>
+        <button class="tab-btn" onclick="switchTab('tab-create-team')">➕ CRIAR TIME</button>
+        <button class="tab-btn" onclick="switchTab('tab-update-data')">⚙️ ATUALIZAR DADOS</button>
+    </div>
+
+    <div id="tab-dashboard" class="tab-content active">
+        
+        <div style="margin-bottom: 25px;">
+            <label style="color: var(--text-gray); font-size: 0.8rem;">SELECIONAR TIME PARA VISUALIZAR:</label>
+            <select id="view-team-select" class="form-control" style="width: 250px; background: var(--bg-card); border-color: var(--neon-orange);" onchange="loadDashboardData()">
+                <option value="">CARREGANDO TIMES...</option>
+            </select>
+        </div>
+
+        <div class="section-title">VISÃO GERAL DO TIME</div>
+        
+        <div class="overview-grid">
+            <div class="stat-box">
+                <div class="stat-icon">🏆</div>
+                <div class="stat-info">
+                    <h4>BOOYAHS</h4>
+                    <div class="value"><span>ex:</span> <span id="dash-booyahs">0</span></div>
+                </div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-icon">🎖️</div>
+                <div class="stat-info">
+                    <h4>PONTOS TOTAIS</h4>
+                    <div class="value"><span>ex:</span> <span id="dash-points">0</span></div>
+                </div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-icon">🔫</div>
+                <div class="stat-info">
+                    <h4>TOTAL DE KILLS</h4>
+                    <div class="value"><span>ex:</span> <span id="dash-kills">0</span></div>
+                </div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-icon">💀</div>
+                <div class="stat-info">
+                    <h4>TOTAL DE MORTES</h4>
+                    <div class="value"><span>ex:</span> <span id="dash-deaths">0</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="charts-grid">
+            <div class="chart-box">
+                <div class="chart-title">
+                    KILLS, MORTES E ASSISTÊNCIAS POR JOGADOR
+                    <span style="font-size: 0.7rem; color: #888;">»</span>
+                </div>
+                <div style="position: relative; height: 250px; width: 100%;">
+                    <canvas id="playersChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-box">
+                <div class="chart-title">
+                    DISTRIBUIÇÃO DE KILLS DA EQUIPE (MVP)
+                    <span style="font-size: 0.7rem; color: #888;">»</span>
+                </div>
+                <div style="position: relative; height: 250px; width: 100%;">
+                    <canvas id="pointsChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-title">ESTATÍSTICAS DOS JOGADORES</div>
+        <div class="players-grid" id="players-container">
+            <div style="color: var(--text-gray); grid-column: span 4; text-align: center; padding: 20px;">
+                Selecione um time acima para carregar os jogadores.
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-create-team" class="tab-content">
+        <div class="admin-section">
+            <div class="admin-panel" style="max-width: 600px; margin: 0 auto;">
+                <h2 style="text-align: center;">CADASTRAR NOVO TIME</h2>
+                <div class="form-group" style="margin-bottom: 25px;">
+                    <label>NOME DO TIME (Ex: Line Principal, Base, etc)</label>
+                    <input type="text" id="new-team-name" class="form-control" placeholder="Digite o nome do time">
+                </div>
+                <button class="btn-submit" onclick="createNewTeam()">CADASTRAR TIME</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-update-data" class="tab-content">
+        <div class="admin-section">
+            
+            <div class="admin-panel">
+                <h2>GERENCIAMENTO DO TIME</h2>
+                <label style="color: var(--text-gray); font-size: 0.8rem;">1. SELECIONE O TIME:</label>
+                <select id="edit-team-select" class="form-control select-highlight" onchange="loadTeamForEdit()">
+                    <option value="">CARREGANDO TIMES...</option>
+                </select>
+
+                <div id="edit-area" style="display: none;">
+                    <hr style="border-color: #333; margin: 20px 0;">
+                    
+                    <h3 style="color: var(--light-orange); margin-bottom: 15px;">TOTAIS DA EQUIPE</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>BOOYAHS TOTAIS</label>
+                            <input type="number" id="upd-booyahs" class="form-control" placeholder="0">
+                        </div>
+                        <div class="form-group">
+                            <label>PONTOS TOTAIS</label>
+                            <input type="number" id="upd-points" class="form-control" placeholder="0">
+                        </div>
+                    </div>
+
+                    <hr style="border-color: #333; margin: 20px 0;">
+
+                    <h3 style="color: var(--light-orange); margin-bottom: 15px;">JOGADORES (EDIÇÃO RÁPIDA)</h3>
+                    
+                    <div class="batch-header">
+                        <div style="flex: 2;">NICK DO JOGADOR</div>
+                        <div style="flex: 1;">KILLS</div>
+                        <div style="flex: 1;">MORTES</div>
+                        <div style="flex: 1;">ASSISTÊNCIAS</div>
+                        <div style="flex: 1;">PARTIDAS</div>
+                        <div style="flex: 2;">NOVA FOTO (OPCIONAL)</div>
+                        <div style="width: 40px;"></div>
+                    </div>
+
+                    <div id="players-edit-list"></div>
+
+                    <button class="btn-add-player" onclick="addPlayerEditRow()">+ ADICIONAR NOVO JOGADOR A ESTE TIME</button>
+
+                    <button class="btn-submit" id="btn-save-all" onclick="saveAllData()">SALVAR TODAS AS ALTERAÇÕES</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="footer">
+        Desenvolvido por <a href="https://agenciaelevare.netlify.app/" target="_blank">Agência Elevare</a>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCqwFTKijxQinqUtBq5ON8uEe5C00KHN0g",
+            authDomain: "hks-estatisca.firebaseapp.com",
+            projectId: "hks-estatisca",
+            storageBucket: "hks-estatisca.firebasestorage.app",
+            messagingSenderId: "1056166487492",
+            appId: "1:1056166487492:web:f357d050aa2f85bec6b091"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+
+        let chartPlayersInstance = null;
+        let chartPointsInstance = null;
+
+        window.switchTab = function(tabId) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            event.currentTarget.classList.add('active');
+            if(tabId === 'tab-dashboard') loadDashboardData();
+        }
+
+        async function loadTeamsList() {
+            try {
+                const timesSnapshot = await getDocs(collection(db, "times"));
+                const selects = [document.getElementById('view-team-select'), document.getElementById('edit-team-select')];
+                
+                selects.forEach(select => { select.innerHTML = '<option value="">Selecione um Time</option>'; });
+
+                timesSnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const optionHTML = `<option value="${doc.id}">${data.nome || doc.id}</option>`;
+                    selects.forEach(select => { select.innerHTML += optionHTML; });
+                });
+            } catch (error) { console.error("Erro ao carregar times:", error); }
+        }
+
+        window.createNewTeam = async function() {
+            const name = document.getElementById('new-team-name').value;
+            if(!name) return alert("Preencha o nome do time.");
+
+            const id = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, '_');
+
+            try {
+                await setDoc(doc(db, "times", id), { nome: name, booyahs: 0, points: 0, criadoEm: new Date() });
+                alert("Time cadastrado com sucesso!");
+                document.getElementById('new-team-name').value = '';
+                loadTeamsList(); 
+                switchTab('tab-update-data');
+                document.getElementById('edit-team-select').value = id;
+                loadTeamForEdit();
+            } catch(e) { alert("Erro ao cadastrar time."); console.error(e); }
+        }
+
+        window.loadTeamForEdit = async function() {
+            const teamId = document.getElementById('edit-team-select').value;
+            const editArea = document.getElementById('edit-area');
+            const listContainer = document.getElementById('players-edit-list');
+            
+            if(!teamId) { editArea.style.display = 'none'; return; }
+            
+            editArea.style.display = 'block';
+            listContainer.innerHTML = 'Carregando jogadores...';
+
+            try {
+                const teamSnap = await getDoc(doc(db, "times", teamId));
+                if(teamSnap.exists()) {
+                    document.getElementById('upd-booyahs').value = teamSnap.data().booyahs || 0;
+                    document.getElementById('upd-points').value = teamSnap.data().points || 0;
+                }
+
+                const playersSnap = await getDocs(collection(db, "times", teamId, "jogadores"));
+                listContainer.innerHTML = '';
+                
+                if(playersSnap.empty) {
+                    addPlayerEditRow();
+                } else {
+                    playersSnap.forEach((doc) => {
+                        const data = doc.data();
+                        const mortesAntigas = data.mortes || data.eliminações || 0;
+                        addPlayerEditRow({ nick: data.nick, kills: data.kills, mortes: mortesAntigas, assistências: data.assistências, partidas: data.partidas });
+                    });
+                }
+            } catch(e) { console.error(e); listContainer.innerHTML = 'Erro ao carregar.'; }
+        }
+
+        window.addPlayerEditRow = function(p = {nick:'', kills:0, mortes:0, assistências:0, partidas:0}) {
+            const rowId = 'row_' + Math.random().toString(36).substr(2, 9);
+            const html = `
+                <div class="player-edit-row" id="${rowId}">
+                    <input type="text" class="form-control nick-input" placeholder="Nick" value="${p.nick}" style="flex: 2;">
+                    <input type="number" class="form-control kills-input" placeholder="0" value="${p.kills}" style="flex: 1;">
+                    <input type="number" class="form-control deaths-input" placeholder="0" value="${p.mortes}" style="flex: 1;">
+                    <input type="number" class="form-control assists-input" placeholder="0" value="${p.assistências}" style="flex: 1;">
+                    <input type="number" class="form-control matches-input" placeholder="0" value="${p.partidas}" style="flex: 1;">
+                    <input type="file" class="form-control photo-input" accept="image/*" style="flex: 2; padding: 7px;">
+                    <button class="btn-remove" onclick="document.getElementById('${rowId}').remove()" title="Remover linha">X</button>
+                </div>
+            `;
+            document.getElementById('players-edit-list').insertAdjacentHTML('beforeend', html);
+        }
+
+        window.saveAllData = async function() {
+            const teamId = document.getElementById('edit-team-select').value;
+            if(!teamId) return;
+
+            const btn = document.getElementById('btn-save-all');
+            btn.innerText = "SALVANDO INFORMAÇÕES... AGUARDE";
+            btn.style.opacity = "0.7";
+            btn.disabled = true;
+
+            try {
+                await updateDoc(doc(db, "times", teamId), {
+                    booyahs: Number(document.getElementById('upd-booyahs').value || 0),
+                    points: Number(document.getElementById('upd-points').value || 0)
+                });
+
+                const rows = document.querySelectorAll('.player-edit-row');
+                const savePromises = [];
+
+                for(let row of rows) {
+                    const nick = row.querySelector('.nick-input').value.toUpperCase();
+                    if(!nick) continue;
+
+                    const kills = Number(row.querySelector('.kills-input').value || 0);
+                    const mortes = Number(row.querySelector('.deaths-input').value || 0);
+                    const assists = Number(row.querySelector('.assists-input').value || 0);
+                    const matches = Number(row.querySelector('.matches-input').value || 0);
+                    const photoFile = row.querySelector('.photo-input').files[0];
+
+                    let photoUrl = null;
+
+                    if(photoFile) {
+                        const storageRef = ref(storage, `fotos/${teamId}/${nick}`);
+                        await uploadBytes(storageRef, photoFile);
+                        photoUrl = await getDownloadURL(storageRef);
+                    }
+
+                    const playerData = { nick: nick, kills: kills, mortes: mortes, assistências: assists, partidas: matches };
+                    if(photoUrl) playerData.fotoUrl = photoUrl;
+
+                    const playerPromise = setDoc(doc(db, "times", teamId, "jogadores", nick), playerData, { merge: true });
+                    savePromises.push(playerPromise);
+                }
+
+                await Promise.all(savePromises);
+                alert("Tudo salvo com sucesso!");
+                loadTeamForEdit();
+
+            } catch(e) { 
+                console.error(e); 
+                alert("Ocorreu um erro ao salvar. Verifique o console."); 
+            } finally {
+                btn.innerText = "SALVAR TODAS AS ALTERAÇÕES";
+                btn.style.opacity = "1";
+                btn.disabled = false;
+            }
+        }
+
+        // --- RENDERIZAR GRÁFICOS (NOVO GRÁFICO DE ROSCA) ---
+        function renderCharts(labels, kills, mortes, assists) {
+            Chart.defaults.font.family = 'Rajdhani'; Chart.defaults.color = '#aaaaaa';
+            
+            // Gráfico 1: Barras
+            const ctx1 = document.getElementById('playersChart').getContext('2d');
+            if(chartPlayersInstance) chartPlayersInstance.destroy();
+            chartPlayersInstance = new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'Kills', data: kills, backgroundColor: '#ff9933' },
+                        { label: 'Mortes', data: mortes, backgroundColor: '#ff6600' },
+                        { label: 'Assistências', data: assists, backgroundColor: '#555555' }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: { x: { stacked: true, grid: { color: '#222' } }, y: { stacked: true, grid: { color: '#222' } } },
+                    plugins: { legend: { labels: { color: '#fff' } } }
+                }
+            });
+
+            // Gráfico 2: Rosca (Doughnut) - Distribuição de Kills
+            const ctx2 = document.getElementById('pointsChart').getContext('2d');
+            if(chartPointsInstance) chartPointsInstance.destroy();
+            
+            // Cria um array de cores em tons de laranja para cada jogador
+            const orangePalette = ['#ff6600', '#ff9933', '#cc5200', '#ffb366', '#993d00', '#e65c00'];
+
+            chartPointsInstance = new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: kills,
+                        backgroundColor: orangePalette,
+                        borderColor: '#111',
+                        borderWidth: 3
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    cutout: '75%', // Deixa o anel mais fino
+                    plugins: { 
+                        legend: { position: 'right', labels: { color: '#fff', padding: 20 } }
+                    }
+                }
+            });
+        }
+
+        window.loadDashboardData = async function() {
+            const teamId = document.getElementById('view-team-select').value;
+            if(!teamId) return;
+
+            try {
+                const teamSnap = await getDoc(doc(db, "times", teamId));
+                if(teamSnap.exists()) {
+                    document.getElementById('dash-booyahs').innerText = teamSnap.data().booyahs || 0;
+                    document.getElementById('dash-points').innerText = teamSnap.data().points || 0;
+                }
+
+                const playersSnap = await getDocs(collection(db, "times", teamId, "jogadores"));
+                const container = document.getElementById('players-container');
+                container.innerHTML = '';
+
+                let totalKillsTime = 0, totalDeathsTime = 0;
+                const labels = [], chartKills = [], chartDeaths = [], chartAssists = [];
+
+                if(playersSnap.empty) {
+                    container.innerHTML = '<div style="color:#aaa; grid-column: span 4; text-align: center;">Nenhum jogador cadastrado.</div>';
+                    renderCharts([],[],[],[]);
+                    document.getElementById('dash-kills').innerText = 0;
+                    document.getElementById('dash-deaths').innerText = 0;
+                    return;
+                }
+
+                playersSnap.forEach((doc) => {
+                    const p = doc.data();
+                    let mortesJogador = p.mortes || p.eliminações || 0;
+
+                    totalKillsTime += p.kills || 0; totalDeathsTime += mortesJogador;
+                    
+                    // Só adiciona ao gráfico os jogadores que tem alguma estatística pra não poluir
+                    labels.push(p.nick); chartKills.push(p.kills || 0); chartDeaths.push(mortesJogador); chartAssists.push(p.assistências || 0);
+
+                    let kd = mortesJogador > 0 ? (p.kills / mortesJogador).toFixed(2) : p.kills.toFixed(2);
+                    let foto = p.fotoUrl ? p.fotoUrl : 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23555"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>';
+
+                    container.innerHTML += `
+                        <div class="player-card">
+                            <div class="avatar-container"><img src="${foto}" alt="${p.nick}"></div>
+                            <div class="player-stats">
+                                <div class="player-name">${p.nick}</div>
+                                <div class="stat-row"><span class="label">Kills:</span><span class="val">${p.kills||0}</span></div>
+                                <div class="stat-row"><span class="label">Mortes:</span><span class="val">${mortesJogador}</span></div>
+                                <div class="stat-row"><span class="label">Assistências:</span><span class="val">${p.assistências||0}</span></div>
+                                <div class="stat-row"><span class="label">K/D:</span><span class="val">${kd}</span></div>
+                                <div class="stat-row"><span class="label">Partidas:</span><span class="val">${p.partidas||0}</span></div>
+                            </div>
+                        </div>`;
+                });
+
+                document.getElementById('dash-kills').innerText = totalKillsTime;
+                document.getElementById('dash-deaths').innerText = totalDeathsTime;
+                renderCharts(labels, chartKills, chartDeaths, chartAssists);
+
+            } catch (error) { console.error("Erro ao carregar Dashboard:", error); }
+        }
+
+        window.onload = () => { loadTeamsList(); renderCharts([],[],[],[]); };
+    </script>
+</body>
+</html>
